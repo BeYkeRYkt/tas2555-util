@@ -43,14 +43,14 @@ static void usage(){
 		"usage: ti_audio -r book page register [count]               (read, hexdecimal)",
 		"       ti_audio -w book page register value1 [value2 ...]  (write, hexdecimal)",
 		"       ti_audio -d on                            (turn on the debug msg, bool)",
-		"       ti_audio -p [n]                                 (get/[set] DSP program)",
-		"       ti_audio -c [n]                           (get/[set] DSP configuration)",
+		"       ti_audio -p [n]                        (get/[set] DSP program, decimal)",
+		"       ti_audio -c [n]                  (get/[set] DSP configuration, decimal)",
 		"       ti_audio -s [n]                        (get/[set] sample rate, decimal)",
 		"       ti_audio -b [n]                           (get/[set] bit rate, decimal)",
 		"       ti_audio -v [n]                             (get/[set] volume, decimal)",
+		"       ti_audio -f                                   (trigger firmware reload)",		
 		"       ti_audio -o on                              (turn on/off TAS2555, bool)",
-		"       ti_audio -t		                               (get firmware timestamp)",
-		"NOTE: 1. all numbers are Hexadecimal numbers without prefix 0x .",
+		"       ti_audio -t                                    (get firmware timestamp)",
 		TIAUDIO_VERSION);	
 }
 
@@ -83,6 +83,7 @@ err:
 	return result;
 }
 
+/*
 static int str2hexshort(char *argv, unsigned short *pUInt16_Val){
 	int str_len = strlen(argv), i, j, result = -1;
 	unsigned char val[4] = {0};
@@ -111,6 +112,7 @@ static int str2hexshort(char *argv, unsigned short *pUInt16_Val){
 err:
 	return result;
 }
+*/
 
 static int str2decimal(char *argv, unsigned int *pUInt32_Val){
 	int max_len = strlen(MAX_INT_STR), i, result = -1, j;
@@ -123,10 +125,10 @@ static int str2decimal(char *argv, unsigned int *pUInt32_Val){
 		goto err;
 	}
 	
-	for(i = 0; i <str_len; i++){
+	for(i = (str_len-1), j=0; i >= 0; i--, j++){
 		if((argv[i] <= '9')&&(argv[i] >= '0')){
 			temp = argv[i] - 0x30;
-			nValue += (temp * pow(10, i));
+			nValue += (temp * pow(10, j));
 		}else{
 			fprintf(stderr, "reg/data out of range\n");
 			goto err;
@@ -142,7 +144,7 @@ err:
 
 static int TiAudio_Reg_Write(int fileHandle, int argc, char **argv){
 	int err = -1;
-	unsigned char *pBuff = NULL, book, page, reg,value, len;
+	unsigned char *pBuff = NULL, book, page, reg,value;
 	unsigned int whole_reg = 0;
 	unsigned int temp_reg = 0;
 	int i=0, reg_count = 0;
@@ -210,7 +212,7 @@ err:
 
 static int TiAudio_Reg_Read(int fileHandle, int argc, char **argv){
 	int err = -1;
-	unsigned char *pBuff = NULL, book, page, reg,value, len;
+	unsigned char *pBuff = NULL, book, page, reg, len;
 	unsigned int whole_reg = 0;
 	unsigned int temp_reg = 0;
 	int i=0, reg_count = 0;
@@ -286,9 +288,6 @@ err:
 static int TiAudio_Debug_On(int fileHandle, int argc, char **argv){
 	int err = -1;
 	unsigned char pBuff[2], on;
-	unsigned int whole_reg = 0;
-	unsigned int temp_reg = 0;
-	int i=0, reg_count = 0;
 	
 	if(argc != 3) {
 		fprintf(stderr, "invalid para numbers\n");
@@ -323,7 +322,8 @@ err:
 
 static int TiAudio_Program(int fileHandle, int argc, char **argv){
 	int err = -1;
-	unsigned char pBuff[PROGRAM_BUF_SIZE], bSet = 0, nProgram;
+	unsigned char pBuff[PROGRAM_BUF_SIZE], bSet = 0;
+	unsigned int nProgram;
 	
 	if(argc == 2){
 		bSet = 0;
@@ -337,8 +337,9 @@ static int TiAudio_Program(int fileHandle, int argc, char **argv){
 	pBuff[0] = TIAUDIO_CMD_PROGRAM;
 	
 	if(bSet == 1){
-		err = str2hexchar(argv[2], &nProgram);
+		err = str2decimal(argv[2], &nProgram);
 		if(err < 0){
+			fprintf(stderr, "invalid para numbers\n");		
 			goto err;
 		}
 		
@@ -377,7 +378,8 @@ err:
 
 static int TiAudio_Configuration(int fileHandle, int argc, char **argv){
 	int err = -1;
-	unsigned char pBuff[CONFIGURATION_BUF_SIZE], bSet = 0, nConfiguration;
+	unsigned char pBuff[CONFIGURATION_BUF_SIZE], bSet = 0;
+	unsigned int nConfiguration;
 	
 	if(argc == 2){
 		bSet = 0;
@@ -391,7 +393,7 @@ static int TiAudio_Configuration(int fileHandle, int argc, char **argv){
 	pBuff[0] = TIAUDIO_CMD_CONFIGURATION;
 	
 	if(bSet == 1){
-		err = str2hexchar(argv[2], &nConfiguration);
+		err = str2decimal(argv[2], &nConfiguration);
 		if(err < 0){
 			goto err;
 		}
@@ -443,6 +445,7 @@ static int TiAudio_SampleRate(int fileHandle, int argc, char **argv){
 	unsigned char pBuff[5];
 	unsigned char bSet = 0;
 	unsigned int nSampleRate;
+	int nLen;
 	
 	if(argc == 2){
 		bSet = 0;
@@ -473,8 +476,11 @@ static int TiAudio_SampleRate(int fileHandle, int argc, char **argv){
 		pBuff[4] = (nSampleRate&0x000000ff);
 	}
 	
-	err = write(fileHandle, pBuff, 1+(bSet?4:0));
-	if(err != (1+bSet?(4):(0))){
+	if(bSet) nLen = 5; 
+	else nLen = 1;
+	
+	err = write(fileHandle, pBuff, nLen);
+	if(err != nLen){
 		fprintf(stderr, "write err=%d\n", err);
 		goto err;
 	}
@@ -543,15 +549,12 @@ static int TiAudio_BitRate(int fileHandle, int argc, char **argv){
 	if(bSet == 1){
 		fprintf(stderr, "BitRate Set to %d\n", nBitRate);
 	}else{
-		err = read(fileHandle, pBuff, 4);
-		if(err != 4){
+		err = read(fileHandle, pBuff, 1);
+		if(err != 1){
 			fprintf(stderr, "read err=%d\n", err);
 			goto err;
 		}else{
-			nBitRate = pBuff[0] + 
-				((unsigned int)pBuff[1] << 8) +
-				((unsigned int)pBuff[2] << 16) +
-				((unsigned int)pBuff[3] << 24);			
+			nBitRate = pBuff[0];
 			fprintf(stderr, "\t BitRate: %d\n", nBitRate);
 		}
 	}
@@ -614,9 +617,6 @@ err:
 static int TiAudio_SpeakerOn(int fileHandle, int argc, char **argv){
 	int err = -1;
 	unsigned char pBuff[2], on;
-	unsigned int whole_reg = 0;
-	unsigned int temp_reg = 0;
-	int i=0, reg_count = 0;
 	
 	if(argc != 3) {
 		fprintf(stderr, "invalid para numbers\n");
@@ -652,7 +652,6 @@ err:
 static int TiAudio_Timestamp(int fileHandle, int argc, char **argv){
 	int err = -1;
 	unsigned char pBuff[4];
-	unsigned int nTimestamp = 0;
 	
 	pBuff[0] = TIAUDIO_CMD_FW_TIMESTAMP;
 	
@@ -674,7 +673,7 @@ static int TiAudio_Timestamp(int fileHandle, int argc, char **argv){
 	
 		time_t t = (time_t)nTimestamp;  
 		struct tm *p;  
-		p=gmtime(&t);  
+		p=localtime(&t);  
 		char s[100];  
 		strftime(s, sizeof(s), "%Y-%m-%d %H:%M:%S", p);  
 		fprintf(stderr, "FW Timestamp : %d: %s\n", (int)t, s); 
@@ -685,8 +684,26 @@ err:
 	return err;
 }
 
+static int TiAudio_TriggerFWReload(int fileHandle, int argc, char **argv){
+	int err = -1;
+	unsigned char pBuff[4];	
+	pBuff[0] = TIAUDIO_CMD_FW_RELOAD;
+	
+	err = write(fileHandle, pBuff, 1);
+	if(err != 1){
+		fprintf(stderr, "write err=%d\n", err);
+		goto err;
+	}
+	
+	fprintf(stderr, "Firmware Reload Triggered\n");	
+	
+err:
+
+	return err;
+}
+
 static int getDevHandle(){
-	int fileHandle = -1, i;
+	int fileHandle = -1;
 	fileHandle = open(TI_AUDIO_NAME, O_RDWR);
 	if(fileHandle < 0 ){
 		fprintf(stderr, "[ERROR]file(%s) open_RDWR error\n", TI_AUDIO_NAME);
@@ -712,7 +729,7 @@ int main(int argc, char **argv)
 		return 0;
 	}
 
-	while ((ch = getopt(argc, argv, "wrdpcsbvot")) != -1) {
+	while ((ch = getopt(argc, argv, "wrdpcsbvotf")) != -1) {
 		switch (ch) {
 		case 'w': 
 			ret = TiAudio_Reg_Write(fileHandle, argc, argv);			
@@ -743,7 +760,10 @@ int main(int argc, char **argv)
 			break;				
 		case 't':
 			ret = TiAudio_Timestamp(fileHandle, argc, argv);
-			break;					
+			break;		
+		case 'f':
+			ret = TiAudio_TriggerFWReload(fileHandle, argc, argv);
+			break;
 		default:
 			usage();
 			break;

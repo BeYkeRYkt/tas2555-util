@@ -25,7 +25,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define	TIAUDIO_VERSION		"Version : 3.0 (23th, March, 2016)"
+#define	TIAUDIO_VERSION		"Version : 3.1 (20th, May, 2016)"
 #define	TI_AUDIO_NAME		"/dev/tas2555"
 
 #define MAX_INT_STR	"4294967295"
@@ -53,6 +53,7 @@
 #define	TIAUDIO_CMD_BITRATE				9
 #define	TIAUDIO_CMD_DACVOLUME			10
 #define	TIAUDIO_CMD_SPEAKER				11
+#define	TIAUDIO_CMD_FW_RELOAD			12
 
 #define TAS2555_REG(book, page, reg)		(((book * 256 * 128) + \
 						 (page * 128)) + reg)
