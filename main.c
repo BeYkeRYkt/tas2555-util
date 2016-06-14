@@ -605,7 +605,7 @@ static int TiAudio_DACVolume(int fileHandle, int argc, char **argv){
 			goto err;
 		}else{
 			nVol = pBuff[0];		
-			fprintf(stderr, "\t nSampleRate: %d\n", nVol);
+			fprintf(stderr, "\t DAC Volume: %d\n", nVol);
 		}
 	}
 
