@@ -649,7 +649,7 @@ err:
 	return err;
 }
 
-static int TiAudio_Timestamp(int fileHandle, int argc, char **argv){
+static int TiAudio_Timestamp(int fileHandle){
 	int err = -1;
 	unsigned char pBuff[4];
 	
@@ -684,7 +684,7 @@ err:
 	return err;
 }
 
-static int TiAudio_TriggerFWReload(int fileHandle, int argc, char **argv){
+static int TiAudio_TriggerFWReload(int fileHandle){
 	int err = -1;
 	unsigned char pBuff[4];	
 	pBuff[0] = TIAUDIO_CMD_FW_RELOAD;
@@ -759,10 +759,10 @@ int main(int argc, char **argv)
 			ret = TiAudio_SpeakerOn(fileHandle, argc, argv);
 			break;				
 		case 't':
-			ret = TiAudio_Timestamp(fileHandle, argc, argv);
+			ret = TiAudio_Timestamp(fileHandle);
 			break;		
 		case 'f':
-			ret = TiAudio_TriggerFWReload(fileHandle, argc, argv);
+			ret = TiAudio_TriggerFWReload(fileHandle);
 			break;
 		default:
 			usage();
